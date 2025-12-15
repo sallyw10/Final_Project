@@ -1,0 +1,148 @@
+---
+title: "Final_Project"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+```
+
+```{r}
+total <- read.csv("~/Desktop/MA615/Final_Project/F+M.csv")
+female <- read.csv("~/Desktop/MA615/Final_Project/Female.csv")
+male <- read.csv("~/Desktop/MA615/Final_Project/Male.csv")
+```
+
+```{r, warning=FALSE}
+total_clean <- total %>%
+  slice(-1) %>%
+  rename(Age_group = Age.group.3.6) %>%
+  pivot_longer(
+    starts_with("X"),
+    names_to = "Year",
+    values_to = "Population"
+  ) %>%
+  mutate(
+    Year = as.numeric(str_remove(Year, "X")),
+    Population = as.numeric(str_replace_all(Population, ",", "")))
+```
+
+```{r, warning=FALSE}
+female_clean <- female %>%
+  slice(-1) %>%
+  rename(Age_group = Age.group.3.6) %>%
+  pivot_longer(
+    starts_with("X"),
+    names_to = "Year",
+    values_to = "Population"
+  ) %>%
+  mutate(
+    Year = as.numeric(str_remove(Year, "X")),
+    Population = as.numeric(str_replace_all(Population, ",", "")))
+```
+
+```{r, warning=FALSE}
+male_clean <- male %>%
+  slice(-1) %>%
+  rename(Age_group = Age.group.3.6) %>%
+  pivot_longer(
+    starts_with("X"),
+    names_to = "Year",
+    values_to = "Population"
+  ) %>%
+  mutate(
+    Year = as.numeric(str_remove(Year, "X")),
+    Population = as.numeric(str_replace_all(Population, ",", "")))
+```
+
+```{r}
+total_clean2 <- total_clean %>% mutate(Sex = "Total")
+female_clean2 <- female_clean %>% mutate(Sex = "Female")
+male_clean2   <- male_clean %>% mutate(Sex = "Male")
+combined <- bind_rows(total_clean2, female_clean2, male_clean2)
+```
+
+```{r}
+write_csv(combined, "final_data.csv")
+```
+
+
+```{r}
+all_sex_trend <- combined %>%
+  filter(Age_group == "All ages")
+
+ggplot(all_sex_trend, aes(Year, Population, color = Sex)) +
+  geom_line(size = 1.1) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c(
+    "Total" = "green",
+    "Female" = "red",
+    "Male" = "blue"
+  )) +
+  labs(
+    title = "PEI Total, Male, and Female Population (2000–2025)",
+    x = "Year",
+    y = "Population",
+    color = "Group"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+```{r, warning=FALSE}
+age_2000 <- combined %>%
+  filter(Sex == "Total",
+         Year == 2000,
+         Age_group != "All ages",
+         Age_group != "Median age")
+
+ggplot(age_2000, aes(x = reorder(Age_group, Population), y = Population)) +
+  geom_bar(stat = "identity", fill = "purple") +
+  coord_flip() +
+  labs(
+    title = "Population Distribution by Age Group in 2000 (PEI)",
+    x = "Age Group",
+    y = "Population"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+```{r, warning=FALSE}
+age_compare <- combined %>%
+  filter(Sex == "Total",
+         Year %in% c(2000, 2025),
+         Age_group != "All ages",
+         Age_group != "Median age")
+
+ggplot(age_compare, aes(x = Age_group, y = Population, fill = as.factor(Year))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  scale_fill_manual(values = c("2000" = "blue", "2025" = "red")) +
+  labs(
+    title = "Age Structure Comparison: 2000 vs 2025",
+    x = "Age Group",
+    y = "Population",
+    fill = "Year"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+```{r}
+median_age_trend <- combined %>%
+  filter(Sex == "Total",
+         Age_group == "Median age")
+
+ggplot(median_age_trend, aes(Year, Population)) +
+  geom_line(size = 1.2, color = "blue") +
+  geom_point(size = 2, color = "red") +
+  labs(
+    title = "Median Age Trend in PEI (2000-2025)",
+    x = "Year",
+    y = "Median Age"
+  ) +
+  theme_minimal(base_size = 14)
+```
+

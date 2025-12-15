@@ -1,0 +1,182 @@
+---
+title: "Prince Edward Island Population Analysis (2000–2025)"
+author: "Sile Wang"
+date: "Dec. 15 2025"
+format:
+  pdf:
+    toc: false
+    number-sections: true
+    titlepage: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+# Introduction
+
+Prince Edward Island (PEI) is the smallest province in Canada, located on the east coast. Although the island has a small population, it has experienced noticeable demographic changes during the past two decades. Understanding population structure and trends is important for future planning, including healthcare, housing, and labor force needs. This project studies how PEI’s population changed between 2000 and 2025 using official population estimates. The goal is to describe overall growth, changes in age distribution, and the trend in median age.
+
+```{r}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+```
+
+# Data Source and method
+
+## Data Source
+All data in this project comes from Statistics Canada. I used three CSV files: Total population by age group (2000-2025), Male population by age group (2000-2025) and Female population by age group (2000-2025). These files include age groups in 5-year intervals and annual population counts and it provides a complete population overview for the whole island.
+
+```{r}
+total <- read.csv("~/Desktop/MA615/Final_Project/F+M.csv")
+female <- read.csv("~/Desktop/MA615/Final_Project/Female.csv")
+male <- read.csv("~/Desktop/MA615/Final_Project/Male.csv")
+```
+
+## Data cleaning
+
+To prepare the data for analysis, I cleaned the total, female, and male population tables using the same procedure. First, I removed the last row of each dataset because it contained notes rather than real values. I then renamed the age group column to “Age_group” to make the variable easier to read. Since the original tables were in wide format, with each year stored as a separate column (for example, X2000, X2001), I reshaped them into long format so that “Year” and “Population” became regular columns. After reshaping, I cleaned the values by removing the “X” prefix from the year names and converting them to numeric, and I also removed commas from the population counts to ensure they could be treated as numbers. Once each table was cleaned, I added a new variable indicating whether the data belonged to Total, Female, or Male. Finally, I combined all three cleaned datasets into one dataset.
+
+```{r, warning=FALSE}
+total_clean <- total %>%
+  slice(-1) %>%
+  rename(Age_group = Age.group.3.6) %>%
+  pivot_longer(
+    starts_with("X"),
+    names_to = "Year",
+    values_to = "Population"
+  ) %>%
+  mutate(
+    Year = as.numeric(str_remove(Year, "X")),
+    Population = as.numeric(str_replace_all(Population, ",", "")))
+```
+
+```{r, warning=FALSE}
+female_clean <- female %>%
+  slice(-1) %>%
+  rename(Age_group = Age.group.3.6) %>%
+  pivot_longer(
+    starts_with("X"),
+    names_to = "Year",
+    values_to = "Population"
+  ) %>%
+  mutate(
+    Year = as.numeric(str_remove(Year, "X")),
+    Population = as.numeric(str_replace_all(Population, ",", "")))
+```
+
+```{r, warning=FALSE}
+male_clean <- male %>%
+  slice(-1) %>%
+  rename(Age_group = Age.group.3.6) %>%
+  pivot_longer(
+    starts_with("X"),
+    names_to = "Year",
+    values_to = "Population"
+  ) %>%
+  mutate(
+    Year = as.numeric(str_remove(Year, "X")),
+    Population = as.numeric(str_replace_all(Population, ",", "")))
+```
+
+```{r}
+total_clean2 <- total_clean %>% mutate(Sex = "Total")
+female_clean2 <- female_clean %>% mutate(Sex = "Female")
+male_clean2   <- male_clean %>% mutate(Sex = "Male")
+combined <- bind_rows(total_clean2, female_clean2, male_clean2)
+```
+
+```{r}
+write_csv(combined, "final_data.csv")
+```
+
+# Exploratory Data Analysis (EDA)
+
+## PEI Total, Male, and Female Population
+```{r}
+all_sex_trend <- combined %>%
+  filter(Age_group == "All ages")
+
+ggplot(all_sex_trend, aes(Year, Population, color = Sex)) +
+  geom_line(size = 1.1) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c(
+    "Total" = "green",
+    "Female" = "red",
+    "Male" = "blue"
+  )) +
+  labs(
+    title = "PEI Poplulation",
+    x = "Year",
+    y = "Population",
+    color = "Group"
+  ) +
+  theme_minimal(base_size = 14)
+```
+This plot shows the population trends for the total, male, and female populations in PEI from 2000 to 2025. Overall, the total population increases steadily, especially after 2016. Both male and female populations grow at a similar rate, and the gap between them remains stable across the entire period. A noticeable pattern is the strong upward trend beginning around 2015, which may reflect increased immigration or economic growth in PEI during recent years.
+
+## Population Distribution by Age Group in 2000
+```{r, warning=FALSE}
+age_2000 <- combined %>%
+  filter(Sex == "Total",
+         Year == 2000,
+         Age_group != "All ages",
+         Age_group != "Median age")
+
+ggplot(age_2000, aes(x = reorder(Age_group, Population), y = Population)) +
+  geom_bar(stat = "identity", fill = "purple") +
+  coord_flip() +
+  labs(
+    title = "Population by Age Group in 2000",
+    x = "Age Group",
+    y = "Population"
+  ) +
+  theme_minimal(base_size = 14)
+```
+Using the year 2000 as an example, this bar chart displays how PEI’s population was distributed across different age groups. Younger and middle-aged groups (ages 0–39) have relatively large populations, with the largest group around 35–39 years. The population gradually decreases for older age groups.
+
+## Age Structure Comparison: 2000 vs 2025
+```{r, warning=FALSE}
+age_compare <- combined %>%
+  filter(Sex == "Total",
+         Year %in% c(2000, 2025),
+         Age_group != "All ages",
+         Age_group != "Median age")
+
+ggplot(age_compare, aes(x = Age_group, y = Population, fill = as.factor(Year))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  scale_fill_manual(values = c("2000" = "blue", "2025" = "red")) +
+  labs(
+    title = "Age Comparison:2000 vs 2025",
+    x = "Age Group",
+    y = "Population",
+    fill = "Year"
+  ) +
+  theme_minimal(base_size = 14)
+```
+This comparison shows how the age structure has changed between 2000 and 2025. Several older age groups (65–79) have grown significantly by 2025, while younger groups (0–19) show smaller increases or even slight decreases. This shift toward older age groups suggests an aging population, which is an important demographic trend for PEI. It may indicate lower birth rates and longer life expectancy.
+
+## Median Age Trend in PEI
+```{r}
+median_age_trend <- combined %>%
+  filter(Sex == "Total",
+         Age_group == "Median age")
+
+ggplot(median_age_trend, aes(Year, Population)) +
+  geom_line(size = 1.2, color = "blue") +
+  geom_point(size = 2, color = "red") +
+  labs(
+    title = "Median Age Trend in PEI",
+    x = "Year",
+    y = "Median Age"
+  ) +
+  theme_minimal(base_size = 14)
+```
+The median age in PEI shows a clear upward trend from 2000 to around 2017. After reaching a peak around 2017–2018, the median age begins to decrease slightly. This pattern supports the previous observations: PEI’s population has aged over time, but in recent years the median age has started to lower. This may be related to increased immigration of younger individuals or changes in fertility patterns.
+
+# Conclusion
+This study shows that over the past 25 years, the total population of Prince Edward Island has grown steadily, with male and female populations increasing at similar rates. The age-structure visualizations clearly highlight a trend of population aging: younger groups have gradually decreased in size over time, while older groups have grown significantly, especially those aged 55 and above. Future analyses could include forecasting models or comparisons with other provinces to better understand how these demographic changes may continue to affect Prince Edward Island in the coming decades.
+
